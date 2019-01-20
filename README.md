@@ -3,7 +3,7 @@ If you have benefits from [elscreen](https://github.com/knu/elscreen), but you w
 header-line of a buffer is used for elscreen, here's `elscreen-tab` for you.
 
 ### Demonstration
-![demo](https://raw.github.com/wiki/aki-s/elscreen-tab/images/elscreen-tab_demo.gif)
+![demo](https://github.com/aki-s/elscreen-tab/blob/gh-pages/docs/images/elscreen-tab_demo.gif)
 
 ### Usage
 ```
