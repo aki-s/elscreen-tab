@@ -5,7 +5,7 @@
 ;; Author: Aki Syunsuke <sunny.day.dev@gmail.com>
 ;; URL: https://github.com/aki-s/elscreen-tab
 ;; Package-Version: 1.0.0
-;; Package-Requires: ((emacs "26") (elscreen "20180321") (dash "2.14.1") cl-lib seq)
+;; Package-Requires: ((emacs "26") (elscreen "20180321") (dash "2.14.1"))
 ;; Keywords: tools, extensions
 ;; Created: 2017-02-26
 
