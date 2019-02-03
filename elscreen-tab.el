@@ -412,7 +412,8 @@ Because header line is precious and tab is only displayed in
 
 ;; Utility for debug:
 (defun elscreen-tab--pp-buffer-and-window ()
-  "Debug Wrong type argument `window-[valid|live]-p`."
+  "Show each buffer name and its connected window.
+Buffers having connected window are displayed first."
   (interactive)
   (cl-labels (
               (tuplize (buf) (cons (buffer-name buf) (get-buffer-window buf)))
