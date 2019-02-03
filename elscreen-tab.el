@@ -410,9 +410,6 @@ Because header line is precious and tab is only displayed in
            )))
   )
 
-;; Run timer, because calling `elscreen-persist-restore' also restores old `elscreen-tab:dedicated-tab-buffer-name'.
-(with-eval-after-load 'elscreen-persist (run-at-time 2 nil #'elscreen-tab:ensure-one-window))
-
 
 ;; Utility for debug:
 (defun elscreen-tab:debug:pp-buffer-and-window ()
