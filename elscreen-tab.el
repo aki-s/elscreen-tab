@@ -253,10 +253,6 @@ This case can happen if `desktop-read' is called."
     (elscreen-tab--set-position 'elscreen-tab-position symbol-pos))
   )
 
-(defun elscreen-tab--window-buffer-name (window)
-  "Get buffer name for WINDOW."
-  (buffer-name (window-buffer window)))
-
 (defun elscreen-tab--get-window ()
   "Create or get `elscreen-tab--dedicated-tab-buffer-name' in\
 current visible display."
