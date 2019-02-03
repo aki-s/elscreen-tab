@@ -298,8 +298,8 @@ current visible display."
     (when window
       (progn
         (elscreen-tab--debug-log
-          "[%s>elscreen-tab--delete-window-if-exists] called for screen[%d]"
-          this-command (elscreen-get-current-screen))
+          "[%s>%s]called_for_screen[%d]"
+          this-command "elscreen-tab--delete-window-if-exists" (elscreen-get-current-screen))
         (setf (window-parameter window 'delete-window) nil)
         (delete-window window)))))
 
@@ -435,7 +435,7 @@ Because header line is precious and tab is only displayed in
 (defun elscreen-tab-unload-function ()
   "Unload function to ensure normal behavior when feature 'elscreen-tab is unloaded."
   (interactive)
-  (elscreen-tab--debug-log "[%S>elscreen-tab-unload-function] called" this-command)
+  (elscreen-tab--debug-log "[%S>%s]called" this-command "elscreen-tab-unload-function")
   (with-demoted-errors "%S"
     (run-hooks elscreen-tab-unload-hooks)
     ))
