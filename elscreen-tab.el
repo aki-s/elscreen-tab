@@ -108,26 +108,29 @@ Alternative to `elscreen-display-tab'."
 
 
 (defface elscreen-tab:current-screen-face
-  '((((class color))
-     (:background "yellow" :foreground "red" :box t))
-    (t (:underline t)))
+  '((default :inherit header-line-highlight)
+     (((class color))
+       (:background "yellow" :foreground "red" :box t))
+     (t (:underline t)))
   "Face for current screen tab."
   :group 'elscreen-tab)
 
 (defface elscreen-tab:other-screen-face
-  '((((type x w32 mac ns) (class color))
-     :background "Gray85" :foreground "Gray50" :box t)
-    (((class color))
-     (:background "blue" :foreground "black" :underline t)))
+  '((default :inherit default)
+     (((type x w32 mac ns) (class color))
+       :background "Gray85" :foreground "Gray50" :box t)
+     (((class color))
+       (:background "blue" :foreground "black" :underline t)))
   "Face for tabs other than current screen one."
   :group 'elscreen-tab)
 
 (defface elscreen-tab:mouse-face
-  `((t
-     :inherit link
-     :background ,(face-attribute 'elscreen-tab:current-screen-face :foreground)
-     :foreground ,(face-attribute 'elscreen-tab:current-screen-face :background)
-     ))
+  `((default :inherit default)
+     (t
+       :inherit link
+       :background ,(face-attribute 'elscreen-tab:current-screen-face :foreground)
+       :foreground ,(face-attribute 'elscreen-tab:current-screen-face :background)
+       ))
   "Face for when mouse cursor is over each tab of elscreen.")
 
 
