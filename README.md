@@ -12,10 +12,10 @@ header-line of a buffer is used for elscreen, here's `elscreen-tab` for you.
 (require 'elscreen-tab)
 (elscreen-tab-mode)  ; Enable `elscreen-tab'.
 
-(elscreen-tab:set-position 'right) ; Show on the right side.
-(elscreen-tab:set-position 'top) ; Show at the top.
-(elscreen-tab:set-position 'left) ; Show on the left side.
-(elscreen-tab:set-position 'bottom) ; Show at the bottom.
+(elscreen-tab-set-position 'right) ; Show on the right side.
+(elscreen-tab-set-position 'top) ; Show at the top.
+(elscreen-tab-set-position 'left) ; Show on the left side.
+(elscreen-tab-set-position 'bottom) ; Show at the bottom.
 (elscreen-tab-mode -1)  ; Disable `elscreen-tab'.
 ```
 
