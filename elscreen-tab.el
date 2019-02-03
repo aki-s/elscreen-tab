@@ -131,12 +131,10 @@ Alternative to `elscreen-display-tab'."
   "Face for when mouse cursor is over each tab of elscreen.")
 
 
-(defmacro elscreen-tab:debug-log (form &rest args)
+(defun elscreen-tab:debug-log (form &rest args)
   "Logging function of the same format with (message FORM ARGS)."
-  (declare (indent 0) (debug (stringp &rest args)))
-  `(if elscreen-tab:debug-flag (message (concat "[ELSCREEN-TAB]",form) ,@args)))
+  (when elscreen-tab:debug-flag (apply #'message (concat "[ELSCREEN-TAB]" form) args)))
 
-
 (defun elscreen-tab:display-buffer-alist ()
   "Return alist for `elscreen-tab' with the same format of `display-buffer-alist'."
   `((side . ,elscreen-tab:position) (slot . 0) (window-height . 1) (preserve-size . (nil . t))
