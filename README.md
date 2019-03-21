@@ -1,3 +1,5 @@
+[![MELPA](https://melpa.org/packages/elscreen-tab-badge.svg)](https://melpa.org/#/elscreen-tab)
+
 ## elscreen-tab
 If you have benefits from [elscreen](https://github.com/knu/elscreen), but you worried about
 header-line of a buffer is used for elscreen, here's `elscreen-tab` for you.
