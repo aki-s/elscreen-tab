@@ -8,6 +8,7 @@
 ;; Package-Requires: ((emacs "26") (elscreen "20180321") (dash "2.14.1"))
 ;; Keywords: tools, extensions
 ;; Created: 2017-02-26
+;; Updated: 2020-11-21T01:44:17Z;
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -443,3 +444,12 @@ Buffers having connected window are displayed first."
 
 (provide 'elscreen-tab)
 ;;; elscreen-tab.el ends here
+
+;; Local variables:
+;; eval: (add-hook 'write-file-functions 'time-stamp)
+;; time-stamp-start: ";; Updated:"
+;; time-stamp-format: " %:y-%02m-%02dT%02H:%02M:%02SZ"
+;; time-stamp-line-limit: 13
+;; time-stamp-time-zone: "UTC"
+;; time-stamp-end: ";"
+;; End:
