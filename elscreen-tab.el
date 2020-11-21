@@ -1,6 +1,6 @@
 ;;; elscreen-tab.el --- minor mode to display tabs of elscreen in a dedicated buffer -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2017 Syunsuke Aki
+;; Copyright (C) 2017 - 2021 Syunsuke Aki
 
 ;; Author: Aki Syunsuke <sunny.day.dev@gmail.com>
 ;; URL: https://github.com/aki-s/elscreen-tab
@@ -8,7 +8,7 @@
 ;; Package-Requires: ((emacs "26") (elscreen "20180321") (dash "2.14.1"))
 ;; Keywords: tools, extensions
 ;; Created: 2017-02-26
-;; Updated: 2020-11-21T01:44:17Z;
+;; Updated: 2020-11-21T14:16:49Z;
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -45,7 +45,6 @@
 ;; Improve usability
 ;; + Naturally support using multiple frames by creating a indigenous buffer of elscreen-tab for each frame.
 ;; + Update name of current elscreen-tab soon after selected buffer is changed.
-;; + Avoid recreating each tab when updating tabs, for performance.
 ;; + Create interactive function to reset screen-id provided by elscreen.
 ;;
 ;;; Known issues:
@@ -63,7 +62,7 @@
 Alternative to `elscreen-display-tab'."
   :tag "elscreen-tab-style"
   :group 'elscreen
-  :package-version '("elscreen-tab" "1.0.0"))
+  :package-version '("elscreen-tab" "1.0.1"))
 
 
 (defconst elscreen-tab--tab-window-parameters
@@ -101,11 +100,16 @@ Alternative to `elscreen-display-tab'."
   :type '(list function)
   :group 'elscreen-tab)
 
+(defcustom elscreen-tab-delay-of-updating-display .5
+  "Second of delay from the last update request before starting update of display."
+  :type 'number
+  :group 'elscreen-tab)
+
 
 (defvar elscreen-tab--mode-line-format nil "Remove mode-line for elscreen-tab if nil.")
 (defvar elscreen-tab-hooks '(elscreen-create-hook elscreen-goto-hook elscreen-kill-hook)
   "A group of hooks to update elscreen-tab.")
-
+(defvar elscreen-tab--display-idle-timer nil "Idle timer object to update display.")
 
 
 (defface elscreen-tab-current-screen-face
@@ -156,21 +160,27 @@ Alternative to `elscreen-display-tab'."
 (defun elscreen-tab--update-buffer ()
   "Update tab buffer if it has changed."
   (elscreen-tab--debug-log "[%s>%s]called" this-command "elscreen-tab--update-buffer")
-
+  (setq elscreen-tab--display-idle-timer nil)
   (with-current-buffer (elscreen-tab--dedicated-tab-buffer-name)
     (setq buffer-read-only nil
-          mode-line-format elscreen-tab--mode-line-format
-          show-trailing-whitespace nil
-          )
+      mode-line-format elscreen-tab--mode-line-format
+      show-trailing-whitespace nil
+      )
     (cursor-intangible-mode 1)
     (erase-buffer)
     (insert
-     (let ((screen-ids (sort (elscreen-get-screen-list) '<))
-           (sep (gethash elscreen-tab-position elscreen-tab--tab-unit-separator "|")))
-       (mapconcat #'elscreen-tab--create-tab-unit screen-ids sep)))
+      (let ((screen-ids (sort (elscreen-get-screen-list) '<))
+             (sep (gethash elscreen-tab-position elscreen-tab--tab-unit-separator "|")))
+        (mapconcat #'elscreen-tab--create-tab-unit screen-ids sep)))
     ;; Finish
-    (setq buffer-read-only t)
-    ))
+    (setq buffer-read-only t)))
+
+(defun elscreen-tab--set-idle-timer-for-updating-display ()
+  (elscreen-tab--debug-log "[%s>%s]called" this-command "elscreen-tab--set-idle-timer-for-updating-display")
+  (elscreen-tab--debug-log "elscreen-tab--display-idle-timer:%s" elscreen-tab--display-idle-timer)
+  (unless elscreen-tab--display-idle-timer
+    (setq elscreen-tab--display-idle-timer
+      (run-with-idle-timer elscreen-tab-delay-of-updating-display nil 'elscreen-tab--update-buffer))))
 
 (defun elscreen-tab--create-tab-unit (screen-id)
   "Return text of a tab unit which is added properties for SCREEN-ID."
@@ -275,7 +285,7 @@ current visible display."
 (defun elscreen-tab--update-and-display ()
   "Show window of elscreen-tab, then refresh the buffer."
   (elscreen-tab--get-window)
-  (elscreen-tab--update-buffer)
+  (elscreen-tab--set-idle-timer-for-updating-display)
   )
 
 (cl-defun elscreen-tab--stingy-height (window)
@@ -349,13 +359,13 @@ HOOKS is such as '(hook1 hook2) or 'hook3."
 (defun elscreen-tab--remove-all-hooks ()
   "Remove hooks enabled by `elscreen-tab-mode'."
   (elscreen-tab--manage-hook 'rm 'elscreen-tab--update-and-display elscreen-tab-hooks)
-  (remove-hook 'elscreen-screen-update-hook 'elscreen-tab--update-buffer)
+  (remove-hook 'elscreen-screen-update-hook 'elscreen-tab--set-idle-timer-for-updating-display)
   )
 
 (defun elscreen-tab--add-all-hooks ()
   "Add hooks for `elscreen-tab-mode'."
   (elscreen-tab--manage-hook 'add 'elscreen-tab--update-and-display elscreen-tab-hooks)
-  (add-hook 'elscreen-screen-update-hook 'elscreen-tab--update-buffer)
+  (add-hook 'elscreen-screen-update-hook 'elscreen-tab--set-idle-timer-for-updating-display)
   )
 
 (defun elscreen-tab--clear-objects ()
