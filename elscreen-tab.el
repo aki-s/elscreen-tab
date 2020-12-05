@@ -8,7 +8,7 @@
 ;; Package-Requires: ((emacs "26") (elscreen "20180321") (dash "2.14.1"))
 ;; Keywords: tools, extensions
 ;; Created: 2017-02-26
-;; Updated: 2020-11-21T14:16:49Z;
+;; Updated: 2020-12-06T05:11:55Z;
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -111,6 +111,8 @@ Alternative to `elscreen-display-tab'."
   "A group of hooks to update elscreen-tab.")
 (defvar elscreen-tab--display-idle-timer nil "Idle timer object to update display.")
 (defvar elscreen-tab--last-screen-id 0)
+(defvar elscreen-tab--last-frame-size nil "Frame size used to judge if tab should be updated.")
+(defvar elscreen-tab--tab-unit-width 16 "Width of each tab.")
 
 ;; defface
 (defface elscreen-tab-current-screen-face
@@ -169,13 +171,19 @@ Alternative to `elscreen-display-tab'."
       )
     (cursor-intangible-mode 1)
     (erase-buffer)
-    (insert
-      (let ((screen-ids (sort (elscreen-get-screen-list) '<))
-             (sep (gethash elscreen-tab-position elscreen-tab--tab-unit-separator "|")))
-        (mapconcat #'elscreen-tab--create-tab-unit screen-ids sep)))
-    ;; Finish
+    (insert ; Change content based on frame-width and tab-position.
+      (let ((sep (gethash elscreen-tab-position elscreen-tab--tab-unit-separator "|")))
+            (if (or (> (frame-width) (* elscreen-tab--tab-unit-width (elscreen-get-number-of-screens)))
+                  (memq elscreen-tab-position (list 'left 'right)))
+              (let*
+                ((screen-ids (sort (elscreen-get-screen-list) '<))
+                  (tab-units (mapconcat #'elscreen-tab--create-tab-unit screen-ids sep)))
+                tab-units)
+              (elscreen-tab--create-abbreviated-tab-units sep))
+            ))
     (setq buffer-read-only t))
-  (setq elscreen-tab--last-screen-id (elscreen-get-current-screen)))
+    (setq elscreen-tab--last-frame-size (elscreen-tab--frame-size))
+    (setq elscreen-tab--last-screen-id (elscreen-get-current-screen)))
 
 (defun elscreen-tab--set-idle-timer-for-updating-display ()
   (elscreen-tab--debug-log "[%s>%s]called" this-command "elscreen-tab--set-idle-timer-for-updating-display")
@@ -184,13 +192,29 @@ Alternative to `elscreen-display-tab'."
     (setq elscreen-tab--display-idle-timer
       (run-with-idle-timer elscreen-tab-delay-of-updating-display nil 'elscreen-tab--update-buffer))))
 
-(defun elscreen-tab--create-tab-unit (screen-id)
+(defun elscreen-tab--move-frame-function(frame)
+  (when (not (equal (elscreen-tab--frame-size) elscreen-tab--last-frame-size))
+    (elscreen-tab--debug-log "[%s]called. %S is moved" this-command frame)
+    (elscreen-tab--set-idle-timer-for-updating-display)))
+
+(defun elscreen-tab--create-abbreviated-tab-units (tab-separator)
+  "Creae only previous and current tab for narrow window width."
+  (let* ((lst (elscreen-get-screen-list))
+         (tab-count (length lst)))
+    (concat
+      (if (> tab-count 2) (format "[%s/%s] " 2 tab-count)) ; todo bind keybord shortcut for the rest tabs.
+      (elscreen-tab--create-tab-unit (elscreen-get-current-screen) elscreen-tab--tab-unit-width)
+      tab-separator
+      (elscreen-tab--create-tab-unit (elscreen-get-previous-screen) elscreen-tab--tab-unit-width)))
+  )
+
+(defun elscreen-tab--create-tab-unit (screen-id &optional tab-width)
   "Return text of a tab unit which is added properties for SCREEN-ID."
   (let* ((nickname-or-buf-names (assoc-default screen-id (elscreen-get-screen-to-name-alist)))
          (nickname-or-1st-buffer
           (elscreen-tab--avoid-undesirable-name (split-string nickname-or-buf-names ":")))
          (tab-name
-          (elscreen-truncate-screen-name nickname-or-1st-buffer (elscreen-tab-width) t))
+          (elscreen-truncate-screen-name nickname-or-1st-buffer (or tab-width (elscreen-tab-width)) t))
          (tab-status (elscreen-status-label screen-id " "))
          (tab-id (concat "[" (number-to-string screen-id) "]"))
          tab-title
@@ -230,6 +254,9 @@ Alternative to `elscreen-display-tab'."
         (interactive "e")
         (elscreen-goto screen-id)))
     keymap))
+
+(defun elscreen-tab--frame-size()
+  (cons (frame-width) (frame-pixel-height)))
 
 (defun elscreen-tab--elscreen-tab-name-p (buffer)
   "Return t if BUFFER is named `elscreen-tab--dedicated-tab-buffer-name'."
@@ -277,9 +304,11 @@ current visible display."
         ;; Hide header-line.
         (setq header-line-format nil)
         (setq buffer-read-only t)
+        (setq display-line-numbers nil)
         ))
     (setq win (display-buffer-in-side-window buf (elscreen-tab--display-buffer-alist)))
-    (elscreen-tab--stingy-height win) ; It seems `display-buffer-in-side-window didn't make window less than window-min-height.
+    ;; It seems `display-buffer-in-side-window didn't make window less than window-min-height.
+    (elscreen-tab--stingy-window-body win)
     (set-window-dedicated-p win t) ; Because newly created window is not dedicated.
     (elscreen-tab--ensure-one-window)
     win))
@@ -290,18 +319,18 @@ current visible display."
   (elscreen-tab--set-idle-timer-for-updating-display)
   )
 
-(cl-defun elscreen-tab--stingy-height (window)
+(cl-defun elscreen-tab--stingy-window-body (window)
   "Set WINDOW height as small as possible."
-  (unless window (cl-return-from elscreen-tab--stingy-height
+  (unless window (cl-return-from elscreen-tab--stingy-window-body
                    "Invalid argument: window must not be nil"))
   (with-selected-window window
-    (let* ((expected-height 1)
-           (delta (- expected-height (window-body-height)))
-           (delta-allowed (window-resizable window delta nil window)))
+    (let* ((is-side (memq elscreen-tab-position (list 'left 'right)))
+           (delta (if is-side (- elscreen-tab--tab-unit-width (window-body-width)) (- 1 (window-body-height))))
+           (delta-allowed (window-resizable window delta is-side window)))
       (with-demoted-errors "Unable to minimize %s"
-        (window-resize window delta-allowed nil t)
-        (window-preserve-size window nil t)
-        (setq window-size-fixed 'height)
+        (window-resize window delta-allowed is-side t)
+        (window-preserve-size window is-side t)
+        (setq window-size-fixed (if is-side 'width 'height))
         )))
   )
 
@@ -369,6 +398,18 @@ HOOKS is such as '(hook1 hook2) or 'hook3."
   (elscreen-tab--manage-hook 'add 'elscreen-tab--update-and-display elscreen-tab-hooks)
   (add-hook 'elscreen-screen-update-hook 'elscreen-tab--set-idle-timer-for-updating-display)
   )
+
+(defun elscreen-tab-toggle-move-frame-function(&optional enable)
+  ;; `move-frame-functions' is;
+  ;; [Darwin10.15,emacs26] quickly triggered by change of frame-width using ShiftIt.app.
+  ;; [Ubuntu18.04,Xwayland,eamcs27,gnome-shell3.28.4] moving frame by pointer and keyboard shortcut worked,
+  ;; but changing size by pintching bottom and right edge triggered nothing.
+  ;; Moving frame pintching at top bar bursted frame-events.
+  (if enable
+    (push #'elscreen-tab--move-frame-function move-frame-functions)
+    (setq move-frame-functions
+      (remove #'elscreen-tab--move-frame-function move-frame-functions))
+    ))
 
 (defun elscreen-tab--clear-objects ()
   "Delete all GUI objects related to elscreen-tab."
