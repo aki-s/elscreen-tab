@@ -110,6 +110,7 @@ Alternative to `elscreen-display-tab'."
 (defvar elscreen-tab-hooks '(elscreen-create-hook elscreen-goto-hook elscreen-kill-hook)
   "A group of hooks to update elscreen-tab.")
 (defvar elscreen-tab--display-idle-timer nil "Idle timer object to update display.")
+(defvar elscreen-tab--last-screen-id 0)
 
 
 (defface elscreen-tab-current-screen-face
@@ -173,12 +174,13 @@ Alternative to `elscreen-display-tab'."
              (sep (gethash elscreen-tab-position elscreen-tab--tab-unit-separator "|")))
         (mapconcat #'elscreen-tab--create-tab-unit screen-ids sep)))
     ;; Finish
-    (setq buffer-read-only t)))
+    (setq buffer-read-only t))
+  (setq elscreen-tab--last-screen-id (elscreen-get-current-screen)))
 
 (defun elscreen-tab--set-idle-timer-for-updating-display ()
   (elscreen-tab--debug-log "[%s>%s]called" this-command "elscreen-tab--set-idle-timer-for-updating-display")
-  (elscreen-tab--debug-log "elscreen-tab--display-idle-timer:%s" elscreen-tab--display-idle-timer)
-  (unless elscreen-tab--display-idle-timer
+  (unless (and elscreen-tab--display-idle-timer (= elscreen-tab--last-screen-id (elscreen-get-current-screen)))
+    (elscreen-tab--debug-log "elscreen-tab--display-idle-timer : %s" elscreen-tab--display-idle-timer)
     (setq elscreen-tab--display-idle-timer
       (run-with-idle-timer elscreen-tab-delay-of-updating-display nil 'elscreen-tab--update-buffer))))
 
