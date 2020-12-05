@@ -56,7 +56,7 @@
 (require 'seq)
 (require 'elscreen)
 
-
+;; defgroup
 (defgroup elscreen-tab nil
   "Show tabs of elscreen in dedicated buffer.
 Alternative to `elscreen-display-tab'."
@@ -64,7 +64,7 @@ Alternative to `elscreen-display-tab'."
   :group 'elscreen
   :package-version '("elscreen-tab" "1.0.1"))
 
-
+;; defconst
 (defconst elscreen-tab--tab-window-parameters
   '(window-parameters .
                       ((no-other-window . t) (no-delete-other-windows . t) (delete-window . ignore))))
@@ -105,14 +105,14 @@ Alternative to `elscreen-display-tab'."
   :type 'number
   :group 'elscreen-tab)
 
-
+;; defvar
 (defvar elscreen-tab--mode-line-format nil "Remove mode-line for elscreen-tab if nil.")
 (defvar elscreen-tab-hooks '(elscreen-create-hook elscreen-goto-hook elscreen-kill-hook)
   "A group of hooks to update elscreen-tab.")
 (defvar elscreen-tab--display-idle-timer nil "Idle timer object to update display.")
 (defvar elscreen-tab--last-screen-id 0)
 
-
+;; defface
 (defface elscreen-tab-current-screen-face
   '((default :inherit header-line-highlight)
      (((class color))
@@ -139,7 +139,7 @@ Alternative to `elscreen-display-tab'."
        ))
   "Face for when mouse cursor is over each tab of elscreen.")
 
-
+;; defun
 (defun elscreen-tab--debug-log (form &rest args)
   "Logging function of the same format with (message FORM ARGS)."
   (when elscreen-tab-debug-flag (apply #'message (concat "[ELSCREEN-TAB]" form) args)))
@@ -396,8 +396,7 @@ HOOKS is such as '(hook1 hook2) or 'hook3."
     )
    ))
 
-
-;;;; Mode
+;;;; Mode
 ;;;###autoload
 (define-minor-mode elscreen-tab-mode
   "Show tab window of elscreen at `elscreen-tab-position' instead of 'header-line.
@@ -415,15 +414,16 @@ Because header line is precious and tab is only displayed in
            (setq elscreen-display-tab nil) ; Disable `tab' using header-line.
            (elscreen-tab--add-all-hooks)
            (elscreen-tab--update-and-display)
+           (elscreen-tab-toggle-move-frame-function t)
            )
           (t
            (elscreen-tab--remove-all-hooks) ; Delete side-effects.
            (elscreen-tab--clear-objects)
+           (elscreen-tab-toggle-move-frame-function nil)
            )))
   )
 
-
-;; Utility for debug:
+;; Utility for debug:
 (defun elscreen-tab--pp-buffer-and-window ()
   "Show each buffer name and its connected window.
 Buffers having connected window are displayed first."
