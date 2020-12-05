@@ -235,7 +235,7 @@ Alternative to `elscreen-display-tab'."
   "Return t if BUFFER is named `elscreen-tab--dedicated-tab-buffer-name'."
   (equal (buffer-name buffer) elscreen-tab--dedicated-tab-buffer-name))
 
-(defun elscreen-tab--tab-number ()
+(defun elscreen-tab--window-count ()
   "Window number (s) of currently displayed `elscreen-tab--dedicated-tab-buffer-name'."
   (-count #'elscreen-tab--elscreen-tab-name-p
           (mapcar #'window-buffer (window-list))))
@@ -244,7 +244,7 @@ Alternative to `elscreen-display-tab'."
   "Delete elscreen-tab if it is not side window.
 This case can happen if `desktop-read' is called."
   (elscreen-tab--debug-log "[%s>%s]called" this-command "elscreen-tab--ensure-one-window")
-  (when (= (elscreen-tab--tab-number) 1)
+  (when (= (elscreen-tab--window-count) 1)
     (cl-return-from elscreen-tab--ensure-one-window))
   (let* ((ignore-window-parameters t)
          (win-list (window-list)))
@@ -301,7 +301,7 @@ current visible display."
       (with-demoted-errors "Unable to minimize %s"
         (window-resize window delta-allowed nil t)
         (window-preserve-size window nil t)
-        (setq window-size-fixed t)
+        (setq window-size-fixed 'height)
         )))
   )
 
