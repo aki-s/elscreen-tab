@@ -8,7 +8,7 @@
 ;; Package-Requires: ((emacs "26") (elscreen "20180321") (dash "2.14.1"))
 ;; Keywords: tools, extensions
 ;; Created: 2017-02-26
-;; Updated: 2020-12-26T07:08:43Z;
+;; Updated: 2020-12-26T07:41:05Z;
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -115,8 +115,7 @@ Alternative to `elscreen-display-tab'."
      forward-char
      next-line
      previous-line
-     self-insert-command
-     )
+     self-insert-command)
   "List of commands which are not allowed to be a trigger of updating tab.
 The reason why update request arises for these commands would be that
 some command of `elscreen' would have failed ungracefully or there's a bug regarding internal state in it."
@@ -163,8 +162,7 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
      (t
        :inherit link
        :background ,(face-attribute 'elscreen-tab-current-screen-face :foreground)
-       :foreground ,(face-attribute 'elscreen-tab-current-screen-face :background)
-       ))
+       :foreground ,(face-attribute 'elscreen-tab-current-screen-face :background)))
   "Face for when mouse cursor is over each tab of elscreen.")
 
 ;; defun
@@ -209,26 +207,27 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
                   (memq elscreen-tab-position (list 'left 'right)))
               (elscreen-tab--create-tab-units-static)
               (elscreen-tab--create-tab-units-abbreviated))
-            sep)
-          ))
-      (elscreen-tab--move-pointer-to-selected-tab win (elscreen-get-current-screen)) ;fixme: pointer doesn't set at currently selected-tab when switched to the buffer.
+            sep)))
+      ;;fixme: pointer doesn't set at currently selected-tab when switched to the buffer.
+      (elscreen-tab--move-pointer-to-selected-tab (elscreen-get-current-screen) (current-buffer))
       (setq buffer-read-only t)))
   (setq elscreen-tab--last-frame-size (elscreen-tab--frame-size))
   (setq elscreen-tab--last-screen-id (elscreen-get-current-screen))
-  (run-hooks 'elscreen-tab--update-buffer-post-hooks)
-  )
+  (run-hooks 'elscreen-tab--update-buffer-post-hooks))
 
 (defun elscreen-tab--get-nth-from-left(screen-id)
   "0-indexed n-th of SCREEN-ID from left."
   (-elem-index screen-id (sort (elscreen-get-screen-list) '<)))
 
-(defun elscreen-tab--move-pointer-to-selected-tab (window screen-id)
-  (with-selected-window window
+(defun elscreen-tab--move-pointer-to-selected-tab (screen-id buffer)
+  "Move point to selected SCREEN-ID in BUFFER of elscreen-tab."
+  (with-current-buffer buffer
     (goto-char (point-min))
     ;; char is 1-indexed.
     (goto-char (1+ (elscreen-tab--get-nth-from-left screen-id)))))
 
 (defun elscreen-tab--set-idle-timer-for-updating-display ()
+  "Set idle timeer to update display for performance reason."
   (elscreen-tab--debug-log "[%s>%s]called" this-command "elscreen-tab--set-idle-timer-for-updating-display")
   (catch elscreen-tab--unmet-condition
     (if (memq this-command elscreen-tab-ignore-update-for)
@@ -240,11 +239,13 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
         (run-with-idle-timer elscreen-tab-delay-of-updating-display nil 'elscreen-tab--update-buffer)))))
 
 (defun elscreen-tab--move-frame-function(frame)
+  "Set idler timer to update buffer of elscreen-tab for FRAME."
   (when (not (equal (elscreen-tab--frame-size) elscreen-tab--last-frame-size))
     (elscreen-tab--debug-log "[%s]called. %S is moved" this-command frame)
     (elscreen-tab--set-idle-timer-for-updating-display)))
 
 (defun elscreen-tab--create-tab-units-static ()
+  "Create content of elscreen-tab by using static width of tab-unit."
   (let*
     ((screen-ids (sort (elscreen-get-screen-list) '>))
       tab-units)
@@ -255,6 +256,7 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
     tab-units))
 
 (defun elscreen-tab--create-tab-units-abbreviated ()
+  "Create abbreviated content of elscreen-tab for small area of window of elscreen-tab."
   (let* ((lst (elscreen-get-screen-list))
           (tab-count (length lst)))
     (list
@@ -292,8 +294,7 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
            (cl-notany (lambda (e) (string-match e name))
              elscreen-tab-undesirable-name-regexes)
            (not name-list))
-    return (or name "?")
-    ))
+    return (or name "?")))
 
 (defun elscreen-tab--propertize (text screen-id)
   "Return a copy of TEXT with properties added for SCREEN-ID."
@@ -339,20 +340,18 @@ This case can happen if `desktop-read' is called."
     (cl-loop for win in win-list do
       (when (and (elscreen-tab--elscreen-tab-name-p (window-buffer win))
               (not (window-at-side-p win)))
-        (delete-window win)
-        ))))
+        (delete-window win)))))
 
 (defun elscreen-tab--set-position (symbol-custom symbol-pos)
+  "Set SYMBOL-CUSTOM (`elscreen-tab-position') at SYMBOL-POS ('right 'top 'left 'bottom)."
   (set symbol-custom symbol-pos)
   (elscreen-tab--delete-all-winows)
-  (elscreen-tab--get-window)
-  )
+  (elscreen-tab--get-window))
 
 (defun elscreen-tab-set-position (symbol-pos)
   "Set position of elscreen-tab to SYMBOL-POS by updating `elscreen-tab-position'."
   (save-excursion
-    (elscreen-tab--set-position 'elscreen-tab-position symbol-pos))
-  )
+    (elscreen-tab--set-position 'elscreen-tab-position symbol-pos)))
 
 (defun elscreen-tab--get-window ()
   "Create or get `elscreen-tab--dedicated-tab-buffer-name' in\
@@ -366,20 +365,18 @@ current visible display."
         ;; Hide header-line.
         (setq header-line-format nil)
         (setq buffer-read-only t)
-        (setq display-line-numbers nil)
-        ))
+        (setq display-line-numbers nil)))
     (setq win (display-buffer-in-side-window buf (elscreen-tab--display-buffer-alist)))
     ;; It seems `display-buffer-in-side-window didn't make window less than window-min-height.
     (elscreen-tab--stingy-window-body win)
     (set-window-dedicated-p win t) ; Because newly created window is not dedicated.
     (elscreen-tab--ensure-one-window)
-    win))
+    win)))
 
 (defun elscreen-tab--update-and-display ()
   "Show window of elscreen-tab, then refresh the buffer."
   (elscreen-tab--get-window)
-  (elscreen-tab--set-idle-timer-for-updating-display)
-  )
+  (elscreen-tab--set-idle-timer-for-updating-display))
 
 (cl-defun elscreen-tab--stingy-window-body (window)
   "Set WINDOW height as small as possible."
@@ -392,9 +389,7 @@ current visible display."
       (with-demoted-errors "Unable to minimize %s"
         (window-resize window delta-allowed is-side t)
         (window-preserve-size window is-side t)
-        (setq window-size-fixed (if is-side 'width 'height))
-        )))
-  )
+        (setq window-size-fixed (if is-side 'width 'height))))))
 
 (defun elscreen-tab--delete-window-if-exists ()
   "Delete window of `elscreen-tab' of current screen, if it exists."
@@ -417,29 +412,25 @@ else delete current window of SCREEN-ID."
         (elscreen-goto-internal screen-id)
         (elscreen-tab--delete-window-if-exists)
         (elscreen-set-window-configuration screen-id (elscreen-current-window-configuration))
-        (elscreen-goto-internal org-screen-id)
-        )
-      (elscreen-tab--delete-window-if-exists))
-    ))
+        (elscreen-goto-internal org-screen-id))
+      (elscreen-tab--delete-window-if-exists))))
 
 (defun elscreen-tab--delete-all-winows ()
   "Delete all windows of `elscreen-tab'.
 Call this function to disable this mode."
   (save-excursion
-    (mapc #'elscreen-tab--delete-window (elscreen-get-screen-list)))
-  )
+    (mapc #'elscreen-tab--delete-window (elscreen-get-screen-list))))
 
 (defun elscreen-tab--remove-all-hooks ()
   "Remove hooks enabled by `elscreen-tab-mode'."
-  (remove-hook 'elscreen-screen-update-hook 'elscreen-tab--set-idle-timer-for-updating-display)
-  )
+  (remove-hook 'elscreen-screen-update-hook 'elscreen-tab--update-and-display))
 
 (defun elscreen-tab--add-all-hooks ()
   "Add hooks for `elscreen-tab-mode'."
-  (add-hook 'elscreen-screen-update-hook 'elscreen-tab--set-idle-timer-for-updating-display)
-  )
+  (add-hook 'elscreen-screen-update-hook 'elscreen-tab--update-and-display t))
 
-(defun elscreen-tab-toggle-move-frame-function(&optional enable)
+(defun elscreen-tab--toggle-move-frame-function(&optional enable)
+  "ENABLE or disable hook in move-frame-functions."
   ;; `move-frame-functions' is;
   ;; [Darwin10.15,emacs26] quickly triggered by change of frame-width using ShiftIt.app.
   ;; [Ubuntu18.04,Xwayland,eamcs27,gnome-shell3.28.4] moving frame by pointer and keyboard shortcut worked,
@@ -448,8 +439,7 @@ Call this function to disable this mode."
   (if enable
     (push #'elscreen-tab--move-frame-function move-frame-functions)
     (setq move-frame-functions
-      (remove #'elscreen-tab--move-frame-function move-frame-functions))
-    ))
+      (remove #'elscreen-tab--move-frame-function move-frame-functions))))
 
 (defun elscreen-tab--clear-objects ()
   "Delete all GUI objects related to elscreen-tab."
@@ -459,8 +449,7 @@ Call this function to disable this mode."
   (let* ((buf (get-buffer elscreen-tab--dedicated-tab-buffer-name)))
     (when buf
       (set-window-dedicated-p (get-buffer-window buf) nil)
-      (kill-buffer buf)))
-  )
+      (kill-buffer buf))))
 
 (defun elscreen-tab--check-prerequisite ()
   "Throw `elscreen-tab--unmet-condition' if prerequisite to start ‘elscreen-tab-mode’ is not met."
@@ -473,9 +462,7 @@ Call this function to disable this mode."
     ((null elscreen-frame-confs)
       (let ((msg "Please start `elscreen' with `elscreen-start'."))
         (lwarn 'elscreen-tab :error msg)
-        (throw elscreen-tab--unmet-condition msg))
-      )
-    ))
+        (throw elscreen-tab--unmet-condition msg)))))
 
 ;;;; Mode
 ;;;###autoload
@@ -495,14 +482,11 @@ Because header line is precious and tab is only displayed in
             (setq elscreen-display-tab nil) ; Disable `tab' using header-line.
             (elscreen-tab--add-all-hooks)
             (elscreen-tab--update-and-display)
-            (elscreen-tab-toggle-move-frame-function t)
-            )
+            (elscreen-tab--toggle-move-frame-function t))
       (t
         (elscreen-tab--remove-all-hooks) ; Delete side-effects.
         (elscreen-tab--clear-objects)
-        (elscreen-tab-toggle-move-frame-function nil)
-        )))
-  )
+        (elscreen-tab--toggle-move-frame-function nil)))))
 
 ;; Utility for debug:
 (defun elscreen-tab--pp-buffer-and-window ()
@@ -517,14 +501,11 @@ Buffers having connected window are displayed first."
             (cond
               ((or (and e12 e22) (and (null e12) (null e22))) (string< e11 e21))
               ((null e12) nil)
-              ((null e22) t)
-              ))))
-      )
+              ((null e22) t))))))
     (let* ((buffer-window (cl-map 'list #'tuplize (buffer-list)))
             (res (seq-sort #'window-bound-p buffer-window)))
       (pp res (get-buffer-create "*elscreen-tab-debug*"))
-      (switch-to-buffer-other-window "*elscreen-tab-debug*")
-      )))
+      (switch-to-buffer-other-window "*elscreen-tab-debug*"))))
 
 ;; Unload function:
 (defun elscreen-tab-unload-function ()
@@ -532,8 +513,7 @@ Buffers having connected window are displayed first."
   (interactive)
   (elscreen-tab--debug-log "[%S>%s]called" this-command "elscreen-tab-unload-function")
   (with-demoted-errors "%S"
-    (run-hooks elscreen-tab-unload-hooks)
-    ))
+    (run-hooks elscreen-tab-unload-hooks)))
 
 (provide 'elscreen-tab)
 ;;; elscreen-tab.el ends here
