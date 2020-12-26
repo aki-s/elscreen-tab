@@ -8,7 +8,7 @@
 ;; Package-Requires: ((emacs "26") (elscreen "20180321") (dash "2.14.1"))
 ;; Keywords: tools, extensions
 ;; Created: 2017-02-26
-;; Updated: 2020-12-13T18:39:27Z;
+;; Updated: 2020-12-26T07:08:43Z;
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -200,10 +200,7 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
     (cursor-intangible-mode 1)
     ;; Fallback to create visible window,
     ;; because some commands such as `magit-blame' breaks the window of elscreen-tab.
-    (let ((win (or (get-buffer-window (elscreen-tab--dedicated-tab-buffer-name))
-                 ;; todo & fixme
-                 ;; (elscreen-tab--get-window) ; uncommenting this line breaks window layout terribly after `magit-blame' is invoked.
-                 )))
+    (let ((win (get-buffer-window (elscreen-tab--dedicated-tab-buffer-name))))
       (erase-buffer)
       (insert ; Change content based on frame-width and tab-position.
         (let ((sep (gethash elscreen-tab-position elscreen-tab--tab-unit-separator "|")))
@@ -267,7 +264,10 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
 
 (defun elscreen-tab--create-tab-unit (screen-id screen-tab-width)
   "Return propertized text of a tab unit of SCREEN-ID having width SCREEN-TAB-WIDTH."
-  (let* ((nickname-or-buf-names (assoc-default screen-id (elscreen-get-screen-to-name-alist)))
+  (let* ((nickname-or-buf-names
+           (or (assoc-default screen-id (elscreen-get-screen-to-name-alist) nil)
+             ;; Avoid possible nil
+             "UNDEF"))
           (nickname-or-1st-buffer
             (elscreen-tab--avoid-undesirable-name (split-string nickname-or-buf-names ":")))
           (tab-name
@@ -358,7 +358,8 @@ This case can happen if `desktop-read' is called."
   "Create or get `elscreen-tab--dedicated-tab-buffer-name' in\
 current visible display."
   (elscreen-tab--debug-log "[%s>%s]called" this-command "elscreen-tab--get-window")
-  (let* ((buf (elscreen-tab--dedicated-tab-buffer-name))
+  (unless (get-buffer-window (elscreen-tab--dedicated-tab-buffer-name))
+    (let* ((buf (elscreen-tab--dedicated-tab-buffer-name))
           (win (get-buffer-window buf)))
     (unless win
       (with-current-buffer buf
