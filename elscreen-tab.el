@@ -8,7 +8,7 @@
 ;; Package-Requires: ((emacs "26") (elscreen "20180321") (dash "2.14.1"))
 ;; Keywords: tools, extensions
 ;; Created: 2017-02-26
-;; Updated: 2020-12-26T07:41:05Z;
+;; Updated: 2020-12-28T01:47:12Z;
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -136,6 +136,7 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
 (defvar elscreen-tab--mode-line-format nil "Remove mode-line for elscreen-tab if nil.")
 (defvar elscreen-tab--display-idle-timer nil "Idle timer object to update display.")
 (defvar elscreen-tab--last-screen-id 0)
+(defvar elscreen-tab--last-buffer-name nil)
 (defvar elscreen-tab--last-frame-size nil "Frame size used to judge if tab should be updated.")
 (defvar elscreen-tab--tab-unit-width 16 "Width of each tab.")
 
@@ -212,6 +213,7 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
       (elscreen-tab--move-pointer-to-selected-tab (elscreen-get-current-screen) (current-buffer))
       (setq buffer-read-only t)))
   (setq elscreen-tab--last-frame-size (elscreen-tab--frame-size))
+  (setq elscreen-tab--last-buffer-name (buffer-name))
   (setq elscreen-tab--last-screen-id (elscreen-get-current-screen))
   (run-hooks 'elscreen-tab--update-buffer-post-hooks))
 
@@ -230,19 +232,21 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
   "Set idle timeer to update display for performance reason."
   (elscreen-tab--debug-log "[%s>%s]called" this-command "elscreen-tab--set-idle-timer-for-updating-display")
   (catch elscreen-tab--unmet-condition
-    (if (memq this-command elscreen-tab-ignore-update-for)
+    (if (or (memq this-command elscreen-tab-ignore-update-for)
+          (and (= elscreen-tab--last-screen-id (elscreen-get-current-screen))
+            (equal elscreen-tab--last-buffer-name (buffer-name))
+            (equal (elscreen-tab--frame-size) elscreen-tab--last-frame-size)))
       (throw elscreen-tab--unmet-condition "Request rejected for performance reason."))
     (elscreen-tab--debug-log "[%s<]" this-command)
-    (unless (and elscreen-tab--display-idle-timer (= elscreen-tab--last-screen-id (elscreen-get-current-screen)))
+    (unless elscreen-tab--display-idle-timer
       (elscreen-tab--debug-log "elscreen-tab--display-idle-timer : %s" elscreen-tab--display-idle-timer)
       (setq elscreen-tab--display-idle-timer
         (run-with-idle-timer elscreen-tab-delay-of-updating-display nil 'elscreen-tab--update-buffer)))))
 
 (defun elscreen-tab--move-frame-function(frame)
   "Set idler timer to update buffer of elscreen-tab for FRAME."
-  (when (not (equal (elscreen-tab--frame-size) elscreen-tab--last-frame-size))
     (elscreen-tab--debug-log "[%s]called. %S is moved" this-command frame)
-    (elscreen-tab--set-idle-timer-for-updating-display)))
+    (elscreen-tab--set-idle-timer-for-updating-display))
 
 (defun elscreen-tab--create-tab-units-static ()
   "Create content of elscreen-tab by using static width of tab-unit."
