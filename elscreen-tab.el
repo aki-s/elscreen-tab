@@ -8,7 +8,7 @@
 ;; Package-Requires: ((emacs "26") (elscreen "20180321") (dash "2.14.1"))
 ;; Keywords: tools, extensions
 ;; Created: 2017-02-26
-;; Updated: 2020-12-28T01:47:12Z;
+;; Updated: 2020-12-29T10:12:32Z;
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -197,8 +197,6 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
       show-trailing-whitespace nil)
     (setq-local auto-hscroll-mode t)
     (cursor-intangible-mode 1)
-    ;; Fallback to create visible window,
-    ;; because some commands such as `magit-blame' breaks the window of elscreen-tab.
     (let ((win (get-buffer-window (elscreen-tab--dedicated-tab-buffer-name))))
       (erase-buffer)
       (insert ; Change content based on frame-width and tab-position.
@@ -243,8 +241,8 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
 
 (defun elscreen-tab--move-frame-function(frame)
   "Set idler timer to update buffer of elscreen-tab for FRAME."
-    (elscreen-tab--debug-log "[%s]called. %S is moved" this-command frame)
-    (elscreen-tab--set-idle-timer-for-updating-display))
+  (elscreen-tab--debug-log "[%s]called. %S is moved" this-command frame)
+  (elscreen-tab--set-idle-timer-for-updating-display))
 
 (defun elscreen-tab--create-tab-units-static ()
   "Create content of elscreen-tab by using static width of tab-unit."
@@ -262,7 +260,7 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
   (let* ((lst (elscreen-get-screen-list))
           (tab-count (length lst)))
     (list
-      (format "[%s/%s] " 2 tab-count) ; todo bind keybord shortcut for the rest tabs.
+      (elscreen-tab--propertize-abbreviated (format "[%s/%s] " 2 tab-count))
       (elscreen-tab--create-tab-unit (elscreen-get-current-screen) elscreen-tab--tab-unit-width)
       (elscreen-tab--create-tab-unit (elscreen-get-previous-screen) elscreen-tab--tab-unit-width))))
 
@@ -297,6 +295,58 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
              elscreen-tab-undesirable-name-regexes)
            (not name-list))
     return (or name "?")))
+
+(defun elscreen-tab--propertize-abbreviated (text)
+  "Propertize TEXT for abbreviated tabs to create menu."
+  (propertize text
+    'help-echo "Jump to screen"
+    'local-map
+    (let* ((keymap (make-sparse-keymap)) menu-func)
+      (setq menu-func
+        (lambda ()
+          (interactive)
+          (let* ((kmap (elscreen-tab--create-tab-jump-keymap))
+                  (key (x-popup-menu t kmap)))
+            (when key
+              (let ((last-command-event (car key))) (elscreen-jump))))))
+      (define-key keymap (kbd "<mouse-1>") menu-func)
+      (define-key keymap (kbd "<return>") menu-func)
+      keymap)))
+
+(defun elscreen-tab--buffer-names (screen-id)
+  "Get buffers of SCREEN-ID."
+  (let ((current (elscreen-get-current-screen))
+         buff-names)
+    (elscreen-goto-internal screen-id)
+    (setq buff-names
+      (-remove (lambda(x) (equal x elscreen-tab--dedicated-tab-buffer-name))
+        (mapcar #'buffer-name (window-state-buffers (window-state-get)))))
+    (elscreen-goto-internal current)
+    buff-names))
+
+(defun elscreen-tab--create-tab-jump-keymap ()
+  "Create keymap which can be used as menu bar."
+  (let ((screen-list (sort (elscreen-get-screen-list) '<))
+         (elscreen-menu nil))
+    (setq elscreen-menu
+      (mapcar
+        (lambda (screen-id)
+          (list
+            (string-to-char (number-to-string screen-id))
+            'menu-item
+            (format (concat "%+1s[%d]%-10s|%-" (number-to-string (window-body-width)) "s")
+              (elscreen-status-label screen-id)
+              screen-id
+              (or (elscreen-get-screen-nickname screen-id) "")
+              (elscreen-tab--buffer-names screen-id))
+            'elscreen-jump
+            :keys (format "%s %d"
+                    (key-description elscreen-prefix-key)
+                    screen-id)))
+        screen-list))
+    (setq elscreen-menu
+      (cons 'keymap (cons "Select Screen" elscreen-menu)))
+    (define-key (current-global-map) [menu-bar elscreen] elscreen-menu)))
 
 (defun elscreen-tab--propertize (text screen-id)
   "Return a copy of TEXT with properties added for SCREEN-ID."
@@ -361,19 +411,19 @@ current visible display."
   (elscreen-tab--debug-log "[%s>%s]called" this-command "elscreen-tab--get-window")
   (unless (get-buffer-window (elscreen-tab--dedicated-tab-buffer-name))
     (let* ((buf (elscreen-tab--dedicated-tab-buffer-name))
-          (win (get-buffer-window buf)))
-    (unless win
-      (with-current-buffer buf
-        ;; Hide header-line.
-        (setq header-line-format nil)
-        (setq buffer-read-only t)
-        (setq display-line-numbers nil)))
-    (setq win (display-buffer-in-side-window buf (elscreen-tab--display-buffer-alist)))
-    ;; It seems `display-buffer-in-side-window didn't make window less than window-min-height.
-    (elscreen-tab--stingy-window-body win)
-    (set-window-dedicated-p win t) ; Because newly created window is not dedicated.
-    (elscreen-tab--ensure-one-window)
-    win)))
+            (win (get-buffer-window buf)))
+      (unless win
+        (with-current-buffer buf
+          ;; Hide header-line.
+          (setq header-line-format nil)
+          (setq buffer-read-only t)
+          (setq display-line-numbers nil)))
+      (setq win (display-buffer-in-side-window buf (elscreen-tab--display-buffer-alist)))
+      ;; It seems `display-buffer-in-side-window didn't make window less than window-min-height.
+      (elscreen-tab--stingy-window-body win)
+      (set-window-dedicated-p win t) ; Because newly created window is not dedicated.
+      (elscreen-tab--ensure-one-window)
+      win)))
 
 (defun elscreen-tab--update-and-display ()
   "Show window of elscreen-tab, then refresh the buffer."
