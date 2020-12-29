@@ -8,7 +8,7 @@
 ;; Package-Requires: ((emacs "26") (elscreen "20180321") (dash "2.14.1"))
 ;; Keywords: tools, extensions
 ;; Created: 2017-02-26
-;; Updated: 2020-12-29T13:39:07Z;
+;; Updated: 2020-12-29T14:07:36Z;
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -55,9 +55,8 @@
 (require 'dash)
 (require 'seq)
 (require 'elscreen)
-(eval-and-compile
-  (if (string-lessp emacs-version "27.1")
-    (require 'elscreen-tab--emacs27)))
+
+(require 'elscreen-tab--emacs27)
 
 ;; defgroup
 (defgroup elscreen-tab nil
