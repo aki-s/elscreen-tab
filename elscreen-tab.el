@@ -8,7 +8,7 @@
 ;; Package-Requires: ((emacs "26") (elscreen "20180321") (dash "2.14.1"))
 ;; Keywords: tools, extensions
 ;; Created: 2017-02-26
-;; Updated: 2020-12-29T10:12:32Z;
+;; Updated: 2020-12-29T13:39:07Z;
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -55,6 +55,9 @@
 (require 'dash)
 (require 'seq)
 (require 'elscreen)
+(eval-and-compile
+  (if (string-lessp emacs-version "27.1")
+    (require 'elscreen-tab--emacs27)))
 
 ;; defgroup
 (defgroup elscreen-tab nil
@@ -197,17 +200,19 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
       show-trailing-whitespace nil)
     (setq-local auto-hscroll-mode t)
     (cursor-intangible-mode 1)
-    (let ((win (get-buffer-window (elscreen-tab--dedicated-tab-buffer-name))))
+    (let ((win (get-buffer-window (elscreen-tab--dedicated-tab-buffer-name)))
+           (sep (gethash elscreen-tab-position elscreen-tab--tab-unit-separator "|"))
+             full-content abbr-content content)
+      (if (or (> (window-text-width win) (* elscreen-tab--tab-unit-width (elscreen-get-number-of-screens)))
+            (memq elscreen-tab-position (list 'left 'right)))
+        (setq full-content (elscreen-tab--create-tab-units-static))
+        (setq abbr-content (elscreen-tab--create-tab-units-abbreviated)))
+      ;; Change content based on frame-width and tab-position.
+      (setq content (mapconcat 'identity (or full-content abbr-content) sep))
       (erase-buffer)
-      (insert ; Change content based on frame-width and tab-position.
-        (let ((sep (gethash elscreen-tab-position elscreen-tab--tab-unit-separator "|")))
-          (mapconcat 'identity
-            (if (or (> (window-text-width win) (* elscreen-tab--tab-unit-width (elscreen-get-number-of-screens)))
-                  (memq elscreen-tab-position (list 'left 'right)))
-              (progn (elscreen-tab--create-tab-units-static)
-                (elscreen-tab--move-pointer-to-selected-tab (elscreen-get-current-screen) (current-buffer)))
-              (elscreen-tab--create-tab-units-abbreviated))
-            sep)))
+      (insert content)
+      (if (and full-content (not (memq elscreen-tab-position (list 'left 'right))))
+        (elscreen-tab--move-pointer-to-selected-tab (elscreen-get-current-screen) win))
       (setq buffer-read-only t)))
   (setq elscreen-tab--last-frame-size (elscreen-tab--frame-size))
   (setq elscreen-tab--last-buffer-name (buffer-name))
@@ -218,11 +223,15 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
   "0-indexed n-th of SCREEN-ID from left."
   (-elem-index screen-id (sort (elscreen-get-screen-list) '<)))
 
-(defun elscreen-tab--move-pointer-to-selected-tab (screen-id buffer)
-  "Move point to selected SCREEN-ID in BUFFER of elscreen-tab."
-  (with-current-buffer buffer
-    (goto-char (point-min)) ;; char is 1-indexed.
-    (right-char (* elscreen-tab--tab-unit-width (elscreen-tab--get-nth-from-left screen-id)))))
+(defun elscreen-tab--move-pointer-to-selected-tab (screen-id window)
+  "Move point to selected SCREEN-ID in WINDOW of elscreen-tab."
+  (elscreen-tab--debug-log "[%s] current %s at %S" this-command (point) window)
+  (let  ((right (1+ ; point is 1-indexed
+                  (* (+ 5  elscreen-tab--tab-unit-width)
+                  ;; status,"[", tab-id, "]","|" => 5 extra chars per tab at least.
+                  (elscreen-tab--get-nth-from-left screen-id)))))
+    (elscreen-tab--debug-log "[%s] to %s at %S" this-command right window)
+    (set-window-point window right)))
 
 (defun elscreen-tab--set-idle-timer-for-updating-display ()
   "Set idle timeer to update display for performance reason."
@@ -320,14 +329,14 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
     (elscreen-goto-internal screen-id)
     (setq buff-names
       (-remove (lambda(x) (equal x elscreen-tab--dedicated-tab-buffer-name))
-        (mapcar #'buffer-name (window-state-buffers (window-state-get)))))
+        (mapcar #'buffer-name (elscreen-tab--emacs27-window-state-buffers (window-state-get)))))
     (elscreen-goto-internal current)
     buff-names))
 
 (defun elscreen-tab--create-tab-jump-keymap ()
   "Create keymap which can be used as menu bar."
   (let ((screen-list (sort (elscreen-get-screen-list) '<))
-         (elscreen-menu nil))
+         elscreen-menu)
     (setq elscreen-menu
       (mapcar
         (lambda (screen-id)
