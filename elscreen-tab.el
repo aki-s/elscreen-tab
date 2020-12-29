@@ -206,11 +206,10 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
           (mapconcat 'identity
             (if (or (> (window-text-width win) (* elscreen-tab--tab-unit-width (elscreen-get-number-of-screens)))
                   (memq elscreen-tab-position (list 'left 'right)))
-              (elscreen-tab--create-tab-units-static)
+              (progn (elscreen-tab--create-tab-units-static)
+                (elscreen-tab--move-pointer-to-selected-tab (elscreen-get-current-screen) (current-buffer)))
               (elscreen-tab--create-tab-units-abbreviated))
             sep)))
-      ;;fixme: pointer doesn't set at currently selected-tab when switched to the buffer.
-      (elscreen-tab--move-pointer-to-selected-tab (elscreen-get-current-screen) (current-buffer))
       (setq buffer-read-only t)))
   (setq elscreen-tab--last-frame-size (elscreen-tab--frame-size))
   (setq elscreen-tab--last-buffer-name (buffer-name))
@@ -224,9 +223,8 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
 (defun elscreen-tab--move-pointer-to-selected-tab (screen-id buffer)
   "Move point to selected SCREEN-ID in BUFFER of elscreen-tab."
   (with-current-buffer buffer
-    (goto-char (point-min))
-    ;; char is 1-indexed.
-    (goto-char (1+ (elscreen-tab--get-nth-from-left screen-id)))))
+    (goto-char (point-min)) ;; char is 1-indexed.
+    (right-char (* elscreen-tab--tab-unit-width (elscreen-tab--get-nth-from-left screen-id)))))
 
 (defun elscreen-tab--set-idle-timer-for-updating-display ()
   "Set idle timeer to update display for performance reason."
