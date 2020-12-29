@@ -8,7 +8,7 @@
 ;; Package-Requires: ((emacs "26") (elscreen "20180321") (dash "2.14.1"))
 ;; Keywords: tools, extensions
 ;; Created: 2017-02-26
-;; Updated: 2020-12-29T14:07:36Z;
+;; Updated: 2020-12-29T14:22:16Z;
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@
 Alternative to `elscreen-display-tab'."
   :tag "elscreen-tab-style"
   :group 'elscreen
-  :package-version '("elscreen-tab" "1.0.1"))
+  :package-version '("elscreen-tab" "1.1.0"))
 
 ;; defconst
 (defconst elscreen-tab--tab-window-parameters
