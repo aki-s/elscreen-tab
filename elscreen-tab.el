@@ -1,4 +1,4 @@
-;;; elscreen-tab.el --- minor mode to display tabs of elscreen in a dedicated buffer -*- lexical-binding: t; -*-
+;;; elscreen-tab.el --- Minor mode to display tabs of elscreen in a dedicated buffer -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2017 - 2021 Syunsuke Aki
 
@@ -8,7 +8,7 @@
 ;; Package-Requires: ((emacs "26") (elscreen "20180321") (dash "2.14.1"))
 ;; Keywords: tools, extensions
 ;; Created: 2017-02-26
-;; Updated: 2020-12-29T14:22:16Z;
+;; Updated: 2023-08-10T21:13:34Z;
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -102,7 +102,7 @@ Alternative to `elscreen-display-tab'."
   :type '(list function)
   :group 'elscreen-tab)
 
-(defcustom elscreen-tab-delay-of-updating-display .5
+(defcustom elscreen-tab-delay-of-updating-display .25
   "Second of delay from the last update request before starting update of display."
   :type 'number
   :group 'elscreen-tab)
@@ -120,7 +120,8 @@ Alternative to `elscreen-display-tab'."
      self-insert-command)
   "List of commands which are not allowed to be a trigger of updating tab.
 The reason why update request arises for these commands would be that
-some command of `elscreen' would have failed ungracefully or there's a bug regarding internal state in it."
+some command of `elscreen' would have failed ungracefully
+or there's a bug regarding internal state in it."
   :type 'list
   :group 'elscreen-tab)
 
@@ -264,7 +265,8 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
     tab-units))
 
 (defun elscreen-tab--create-tab-units-abbreviated ()
-  "Create abbreviated content of elscreen-tab for small area of window of elscreen-tab."
+ "Create abbreviated content of elscreen-tab.
+This is for small area of window of elscreen-tab."
   (let* ((lst (elscreen-get-screen-list))
           (tab-count (length lst)))
     (list
@@ -273,7 +275,8 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
       (elscreen-tab--create-tab-unit (elscreen-get-previous-screen) elscreen-tab--tab-unit-width))))
 
 (defun elscreen-tab--create-tab-unit (screen-id screen-tab-width)
-  "Return propertized text of a tab unit of SCREEN-ID having width SCREEN-TAB-WIDTH."
+ "Return propertized text of a tab unit.
+The unit is for SCREEN-ID having width SCREEN-TAB-WIDTH."
   (let* ((nickname-or-buf-names
            (or (assoc-default screen-id (elscreen-get-screen-to-name-alist) nil)
              ;; Avoid possible nil
@@ -378,6 +381,7 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
     keymap))
 
 (defun elscreen-tab--frame-size()
+  "Cons of frame pixel as (width . hight)."
   (cons (frame-pixel-width) (frame-pixel-height)))
 
 (defun elscreen-tab--elscreen-tab-name-p (buffer)
@@ -385,9 +389,9 @@ some command of `elscreen' would have failed ungracefully or there's a bug regar
   (equal (buffer-name buffer) elscreen-tab--dedicated-tab-buffer-name))
 
 (defun elscreen-tab--window-count ()
-  "Window number (s) of currently displayed `elscreen-tab--dedicated-tab-buffer-name'."
-  (-count #'elscreen-tab--elscreen-tab-name-p
-    (mapcar #'window-buffer (window-list))))
+  "Window number(s) of visible `elscreen-tab--dedicated-tab-buffer-name'."
+ (-count #'elscreen-tab--elscreen-tab-name-p
+ (mapcar #'window-buffer (window-list))))
 
 (cl-defun elscreen-tab--ensure-one-window ()
   "Delete elscreen-tab if it is not side window.
@@ -403,7 +407,8 @@ This case can happen if `desktop-read' is called."
         (delete-window win)))))
 
 (defun elscreen-tab--set-position (symbol-custom symbol-pos)
-  "Set SYMBOL-CUSTOM (`elscreen-tab-position') at SYMBOL-POS ('right 'top 'left 'bottom)."
+ "Set SYMBOL-CUSTOM (`elscreen-tab-position').
+SYMBOL-POS is one of (\\='right \\='top \\='left \\='bottom)."
   (set symbol-custom symbol-pos)
   (elscreen-tab--delete-all-winows)
   (elscreen-tab--get-window))
@@ -414,8 +419,7 @@ This case can happen if `desktop-read' is called."
     (elscreen-tab--set-position 'elscreen-tab-position symbol-pos)))
 
 (defun elscreen-tab--get-window ()
-  "Create or get `elscreen-tab--dedicated-tab-buffer-name' in\
-current visible display."
+  "Create or get the window of `elscreen-tab--dedicated-tab-buffer-name'."
   (elscreen-tab--debug-log "[%s>%s]called" this-command "elscreen-tab--get-window")
   (unless (get-buffer-window (elscreen-tab--dedicated-tab-buffer-name))
     (let* ((buf (elscreen-tab--dedicated-tab-buffer-name))
@@ -463,8 +467,8 @@ current visible display."
         (delete-window window)))))
 
 (defun elscreen-tab--delete-window (&optional screen-id)
-  "Delete `elscree-tab''s window of SCREEN-ID's  if it is specified,\
-else delete current window of SCREEN-ID."
+ "Delete `elscree-tab''s window of SCREEN-ID's.
+If SCREEN-ID is nil, then delete current window of SCREEN-ID."
   (let (org-screen-id)
     (if screen-id
       (progn
@@ -490,7 +494,7 @@ Call this function to disable this mode."
   (add-hook 'elscreen-screen-update-hook 'elscreen-tab--update-and-display t))
 
 (defun elscreen-tab--toggle-move-frame-function(&optional enable)
-  "ENABLE or disable hook in move-frame-functions."
+  "ENABLE or disable hook in `move-frame-functions'."
   ;; `move-frame-functions' is;
   ;; [Darwin10.15,emacs26] quickly triggered by change of frame-width using ShiftIt.app.
   ;; [Ubuntu18.04,Xwayland,eamcs27,gnome-shell3.28.4] moving frame by pointer and keyboard shortcut worked,
@@ -512,7 +516,7 @@ Call this function to disable this mode."
       (kill-buffer buf))))
 
 (defun elscreen-tab--check-prerequisite ()
-  "Throw `elscreen-tab--unmet-condition' if prerequisite to start ‘elscreen-tab-mode’ is not met."
+ "Throws `elscreen-tab--unmet-condition' if pre-condition is not met."
   (cond
     ((null (featurep 'elscreen))
       (let ((msg "Please load `elscreen' before hand."))
@@ -527,10 +531,9 @@ Call this function to disable this mode."
 ;;;; Mode
 ;;;###autoload
 (define-minor-mode elscreen-tab-mode
-  "Show tab window of elscreen at `elscreen-tab-position' instead of 'header-line.
-Because header line is precious and tab is only displayed in
-`frame-first-window' in elscreen-mode.
-"
+"Show tab window of elscreen at `elscreen-tab-position' instead of \\='header-line.
+Because header line is precious and tab is only displayed
+in `frame-first-window' in elscreen-mode."
   :group 'elscreen-tab
   :global t
   :require 'elscreen ; This line doesn't work?
@@ -569,7 +572,9 @@ Buffers having connected window are displayed first."
 
 ;; Unload function:
 (defun elscreen-tab-unload-function ()
-  "Unload function to ensure normal behavior when feature 'elscreen-tab is unloaded."
+ "Unload function to ensure normal behavior.
+
+To be used when feature \\='elscreen-tab is unloaded."
   (interactive)
   (elscreen-tab--debug-log "[%S>%s]called" this-command "elscreen-tab-unload-function")
   (with-demoted-errors "%S"
